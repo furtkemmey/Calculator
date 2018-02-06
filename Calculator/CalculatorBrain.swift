@@ -16,16 +16,17 @@ struct CalculatorBrain {
         }
     }
     
-    private enum Operationi {
+    private enum Operationi {//choose a type
         case constant(Double)
         case unaryOperation((Double) -> Double)
         case binaryOperation((Double, Double) -> Double)
         case equals
     }
-    private var operations: Dictionary<String, Operationi> = [
+    private var operations: Dictionary<String, Operationi> = [//convert symble to a enum type
         "π" : .constant(Double.pi),
         "e" : .constant(M_E),
         "cos" : .unaryOperation(cos),
+        "√" : .unaryOperation(sqrt),
         "±" : .unaryOperation{-$0},
         "x" : .binaryOperation(*),
         "÷" : .binaryOperation{$0 / $1},
@@ -33,6 +34,7 @@ struct CalculatorBrain {
         "-" : .binaryOperation{$0 - $1},
         "=" : .equals
     ]
+    
     private var pendingBinaryOperation:PendingBinaryOperation?
     private struct PendingBinaryOperation {
         let function: (Double, Double) -> Double
@@ -41,6 +43,16 @@ struct CalculatorBrain {
             return function(firstOperand, secondOperand)
         }
     }
+    //case .equals
+    mutating private func performPendingBinaryOperation() {
+        if pendingBinaryOperation != nil && accumulator != nil {
+            accumulator = pendingBinaryOperation!.perform(with: accumulator!)
+            pendingBinaryOperation = nil //release struct
+        }
+        
+    }
+    
+    // MARK: - public AIP
     mutating func performOperation(_ symbol: String) {
         if let operation = operations[symbol] {
             switch operation {
@@ -48,22 +60,17 @@ struct CalculatorBrain {
                 accumulator = value
             case .binaryOperation(let function):
                 if accumulator != nil {
-                    pendingBinaryOperation = PendingBinaryOperation(function: function, firstOperand: accumulator!)
+                    pendingBinaryOperation = PendingBinaryOperation(function: function, firstOperand: accumulator!)//make struct
                     accumulator = nil
                 }
             case .equals:
                 performPendingBinaryOperation()
-            case .unaryOperation(_):
-                break
+            case .unaryOperation(let function):
+                if accumulator != nil {
+                    accumulator = function(accumulator!)
+                }
             }
         }
-    }
-    mutating private func performPendingBinaryOperation() {
-        if pendingBinaryOperation != nil && accumulator != nil {
-            accumulator = pendingBinaryOperation!.perform(with: accumulator!)
-            pendingBinaryOperation = nil
-        }
-        
     }
     
     mutating func setOperand(_ operand: Double) {
